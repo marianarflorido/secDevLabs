@@ -23,14 +23,14 @@ install: compose msg
 
 ## Runs a bruteforce attack
 bruteforce: 
-	docker-compose -f brute-force/docker-compose.yml down -v --remove-orphans
-	docker-compose -f brute-force/docker-compose.yml build
-	docker run --rm --network insecure_net -ti brute-force
+	podman-compose -f brute-force/docker-compose.yml down -v --remove-orphans
+	podman-compose -f brute-force/docker-compose.yml build
+	podman run --rm --network insecure_net -ti brute-force
 
 ## Composes project using docker-compose
 compose:
-	docker-compose -f deployments/docker-compose.yml down -v --remove-orphans
-	docker-compose -f deployments/docker-compose.yml up -d --build --force-recreate
+	podman-compose -f deployments/docker-compose.yml down -v --remove-orphans
+	podman-compose -f deployments/docker-compose.yml up -d --build --force-recreate
 
 ## Prints initialization message after compose phase
 msg:

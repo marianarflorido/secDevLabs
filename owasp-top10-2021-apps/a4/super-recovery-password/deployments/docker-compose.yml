@@ -35,6 +35,9 @@ services:
             MYSQL_USER: user
             MYSQL_PASSWORD: pass
             MYSQL_PORT: 3306
+            SMTP_EMAIL: abf51593aa337f
+            SMTP_PASSWORD: f84a2bd209e4b5
+            SMTP_HOST: sandbox.smtp.mailtrap.io
         command: "go run server.go"
         depends_on:
             - db
@@ -53,6 +56,9 @@ services:
             MYSQL_USER: user
             MYSQL_PASSWORD: pass
             MYSQL_PORT: 3306
+            SMTP_EMAIL: abf51593aa337f
+            SMTP_PASSWORD: f84a2bd209e4b5
+            SMTP_HOST: sandbox.smtp.mailtrap.io
         volumes:
             - storage-a4-database:/var/lib/mysql
             - ../db:/docker-entrypoint-initdb.d

@@ -5,6 +5,10 @@ services:
     build:
       context: ../
       dockerfile: deployments/Dockerfile
+    environment:
+      - USERNAME=admin
+      - PASSWORD=KyYqsTk0ZhI
+      - SECRET=rs14hrUaIY9fnTIUPhouAHMCBAXhV7M3bTsW9DVnmgk=
     volumes:
       - "../app/:/app"
     ports:

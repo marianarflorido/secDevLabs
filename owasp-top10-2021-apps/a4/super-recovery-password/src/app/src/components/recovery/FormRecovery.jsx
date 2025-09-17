@@ -1,3 +1,5 @@
+//Tenho que colocar para dar o input do emai
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -11,10 +13,8 @@ import { QuestionsService, ResetService } from "../../services/requests";
 const FormRecovery = () => {
   let navigate = useNavigate();
   
-  const [questions, setQuestions] = useState([]);
   const [login, setLogin] = useState("");
-  const [firstAnswer, setFirstAnswer] = useState("");
-  const [secondAnswer, setSecondAnswer] = useState("");
+  const [email, setEmail] = useState("");
   const [message, setMessage] = useState("success")
 
   const handleSubmit = async (e) => {

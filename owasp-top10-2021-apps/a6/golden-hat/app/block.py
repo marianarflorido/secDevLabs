@@ -6,4 +6,5 @@ def request(flow):
         flow.response = http.HTTPResponse.make(401, b"Haha! Only allowed hats can see this page!")
 
 def response(flow):
+    #flow.response.headers["Via"] = "mitmproxy"
     flow.response.headers["Via"] = "mitmproxy/5.3.0"

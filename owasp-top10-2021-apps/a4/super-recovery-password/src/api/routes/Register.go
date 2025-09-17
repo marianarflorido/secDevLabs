@@ -19,14 +19,9 @@ func Register(c echo.Context) (err error) {
 	user := types.UserRegister{
 		Login:          u.Login,
 		Password:       u.Password,
-		RepeatPassword: u.Password,
-		FirstQuestion:  u.FirstQuestion,
-		FirstAnswer:    u.FirstAnswer,
-		SecondQuestion: u.SecondQuestion,
-		SecondAnswer:   u.SecondAnswer,
 	}
 
-	success, err := database.RegisterUser(user.Login, user.Password, user.FirstQuestion, user.FirstAnswer, user.SecondQuestion, user.SecondAnswer)
+	success, err := database.RegisterUser(user.Login, user.Password, user.Email)
 	if !success {
 		if err != nil {
 			fmt.Print(err)
@@ -35,7 +30,7 @@ func Register(c echo.Context) (err error) {
 			})
 		}
 		return c.JSON(http.StatusBadRequest, echo.Map{
-			"message": "user already exists or invalid question!",
+			"message": "user ot email already exists!",
 		})
 	}
 

@@ -14,6 +14,13 @@ services:
             dockerfile: deployments/api.Dockerfile
         ports:
             - "10002:10002"
+        
+        environment:
+            MONGO_USER: ${MONGO_USER}
+            MONGO_PASSWORD: ${MONGO_PASSWORD}
+            MONGO_NAME: ${MONGO_NAME}
+            MONGO_HOST: ${MONGO_HOST}
+      
         networks:
             - insecure_net
         command: "go run main.go"
@@ -27,9 +34,17 @@ services:
         build:
             context: ../
             dockerfile: deployments/mongo.Dockerfile
+
+        environment:
+            MONGO_USER: ${MONGO_USER}
+            MONGO_PASSWORD: ${MONGO_PASSWORD}
+            MONGO_NAME: ${MONGO_NAME}
+            MONGO_HOST: ${MONGO_HOST}
+
         ports:
           - "27017:27017"
           - "27018:27018"
+        
         volumes:
             - mongo_vol:/data/db
         networks:

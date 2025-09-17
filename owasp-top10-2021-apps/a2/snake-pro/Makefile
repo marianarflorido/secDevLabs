@@ -23,11 +23,13 @@ install: compose msg
 
 ## Composes project using docker-compose
 compose: compose-down
-	docker-compose -f deployments/docker-compose.yml -p secdevlabs up -d --build --force-recreate
+	if [ ! -d "app/cert" ]; then mkdir app/cert; fi
+	openssl req -new -x509 -sha256 -newkey rsa:2048 -nodes -keyout app/cert/certificate.key -out app/cert/certificate.crt -days 365 -subj '/CN=localhost'
+	podman-compose -f deployments/docker-compose.yml -p secdevlabs up -d --build --force-recreate
 
 ## Down project using docker-compose
 compose-down:
-	docker-compose -f deployments/docker-compose.yml -p secdevlabs down -v --remove-orphans
+	podman-compose -f deployments/docker-compose.yml -p secdevlabs down -v --remove-orphans
 
 ## Prints initialization message after compose phase
 msg:

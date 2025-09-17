@@ -7,7 +7,8 @@ export function Parse(comment) {
             }
         }
         const z = k.substring(0, x);
-        eval(z);
+        const result = Function("return" + z);
+        console.log(result)
     } catch(e) {
         void 0;
     }

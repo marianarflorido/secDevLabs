@@ -12,6 +12,7 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
+	"golang.org/x/time/rate"
 )
 
 func main() {
@@ -20,6 +21,8 @@ func main() {
 		fmt.Println("[x]", err)
 		os.Exit(1)
 	}
+
+	limiter := rate.NewLimiter(rate.Limit(1), 5)
 
 	e := echo.New()
 
@@ -31,11 +34,14 @@ func main() {
 		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete, http.MethodOptions},
 	}))
 
+	e.Use(RateLimiterMiddleware(limiter))
+
 	e.GET("/healthcheck", routes.Healthcheck)
 	e.POST("/userinfo", routes.UserInfo)
+	e.POST("/recovery-request", routes.RecoveryPasswordHandler)
+	e.POST("/recovery-reset", routes.ResetPasswordHandler)
 	e.POST("/register", routes.Register)
 	e.POST("/login", routes.Login)
-	e.POST("/recovery", routes.RecoveryPassword)
 
 	r := e.Group("/reset")
 	config := middleware.JWTConfig{
@@ -48,6 +54,19 @@ func main() {
 	r.POST("", routes.ChangePassword)
 
 	e.Logger.Fatal(e.Start(":3000"))
+}
+
+func RateLimiterMiddleware(limiter *rate.Limiter) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if !limiter.Allow() {
+				return c.JSON(http.StatusTooManyRequests, map[string]string{
+					"error": "too many requests",
+				})
+			}
+			return next(c)
+		}
+	}
 }
 
 func checkAPIrequirements() error {

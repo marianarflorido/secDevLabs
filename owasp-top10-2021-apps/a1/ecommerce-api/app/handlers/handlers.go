@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"github.com/golang-jwt/jwt"
 
 	"github.com/globocom/secDevLabs/owasp-top10-2021-apps/a1/ecommerce-api/app/db"
 	"github.com/labstack/echo"
@@ -16,12 +17,28 @@ func HealthCheck(c echo.Context) error {
 // GetTicket returns the userID ticket.
 func GetTicket(c echo.Context) error {
 	id := c.Param("id")
+
+	token := jwt.New(jwt.SigningMethodHS256)
+
+	// Set claims
+	claims := token.Claims.(jwt.MapClaims)
+	claims["id"] = id
+
+	
+
+
 	userDataQuery := map[string]interface{}{"userID": id}
 	userDataResult, err := db.GetUserData(userDataQuery)
+
+	//jwt.EncodeSegment([]byte(userDataResult.))
+
 	if err != nil {
 		// could not find this user in MongoDB (or MongoDB err connection)
 		return c.JSON(http.StatusBadRequest, map[string]string{"result": "error", "details": "Error finding this UserID."})
 	}
+
+	//jwtToken := jwt.(userDataResult)
+	fmt.Println(userDataResult.Username)
 
 	format := c.QueryParam("format")
 	if format == "json" {

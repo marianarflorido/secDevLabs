@@ -11,13 +11,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-var QUESTIONS = [4]string{
-	"What is your favorite soccer team?",
-	"What is the brand of your first car?",
-	"What is your birthday?",
-	"How old are you?",
-}
-
 func OpenDatabaseConnection() (*sql.DB, error) {
 
 	databaseEndpoint := fmt.Sprintf(
@@ -64,48 +57,83 @@ func ChangePassword(login string, password string, repeatPassword string) error 
 	return nil
 }
 
-func RecoveryPassword(login string, firstAnswer string, secondAnswer string) (types.RecoveryPasswordAnswers, error) {
+func GenerateRecoveryToken(login string) (string, error) {
 	db, err := OpenDatabaseConnection()
 	if err != nil {
-		return types.RecoveryPasswordAnswers{}, err
+		return "", err
 	}
 	defer db.Close()
 
+	// Garante que usuário existe
 	userExists, err := CheckUserExists(login)
 	if !userExists {
-		return types.RecoveryPasswordAnswers{}, err
+		return "", errors.New("usuário não encontrado")
 	}
 
-	result, err := db.Query("SELECT Login, FirstAnswer, SecondAnswer FROM Users WHERE Login = ?", login)
+	// Gera token
+	token, err := utils.GenerateToken()
 	if err != nil {
-		return types.RecoveryPasswordAnswers{}, err
+		return "", err
 	}
 
-	recoveryPasswordAnswers := types.RecoveryPasswordAnswers{}
-
-	for result.Next() {
-		err := result.Scan(&recoveryPasswordAnswers.Login, &recoveryPasswordAnswers.FirstAnswer, &recoveryPasswordAnswers.SecondAnswer)
-		if err != nil {
-			return types.RecoveryPasswordAnswers{}, err
-		}
+	// Salva no banco
+	_, err = db.Exec("UPDATE Users SET RecoveryToken = ? WHERE Login = ?", token, login)
+	if err != nil {
+		return "", err
 	}
 
-	return recoveryPasswordAnswers, nil
+	return token, nil
 }
 
-func invalidadQuestion(question string) bool {
-	for _, b := range QUESTIONS {
-		if b == question {
-			return false
-		}
+func GetUserByToken(token string) (types.RecoveryEmail, error) {
+	db, err := OpenDatabaseConnection()
+	if err != nil {
+		return types.RecoveryEmail{}, err
 	}
-	return true
-}
-func RegisterUser(login string, password string, firstQuestion string, firstAnswer string, secondQuestion string, secondAnswer string) (bool, error) {
+	defer db.Close()
 
-	if invalidadQuestion(firstQuestion) || invalidadQuestion(secondQuestion) {
-		return false, nil
+	row := db.QueryRow("SELECT Login, Email FROM Users WHERE RecoveryToken = ?", token)
+
+	recoveryEmail := types.RecoveryEmail{}
+	err = row.Scan(&recoveryEmail.Login, &recoveryEmail.Email)
+	if err != nil {
+		return types.RecoveryEmail{}, err
 	}
+
+	return recoveryEmail, nil
+}
+
+func ResetPasswordByToken(token, newPassword string) error {
+	db, err := OpenDatabaseConnection()
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	// Pega usuário pelo token
+	row := db.QueryRow("SELECT Login FROM Users WHERE RecoveryToken = ?", token)
+	var login string
+	err = row.Scan(&login)
+	if err != nil {
+		return errors.New("token inválido ou expirado")
+	}
+
+	// Hash da nova senha
+	passwordHashed, err := utils.HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+
+	// Atualiza senha e limpa token
+	_, err = db.Exec("UPDATE Users SET Password = ?, RecoveryToken = NULL WHERE Login = ?", passwordHashed, login)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func RegisterUser(login string, password string, email string) (bool, error) {
 
 	db, err := OpenDatabaseConnection()
 	if err != nil {
@@ -118,12 +146,17 @@ func RegisterUser(login string, password string, firstQuestion string, firstAnsw
 		return false, err
 	}
 
+	emailExists, err := CheckEmailExists(email)
+	if emailExists {
+		return false, err
+	}
+
 	passwordHashed, err := utils.HashPassword(password)
 	if err != nil {
 		return false, err
 	}
 
-	result, err := db.Query("INSERT INTO Users (Login, Password, FirstQuestion, FirstAnswer, SecondQuestion, SecondAnswer) VALUES (?, ?, ?, ?, ?, ?)", login, passwordHashed, firstQuestion, firstAnswer, secondQuestion, secondAnswer)
+	result, err := db.Query("INSERT INTO Users (Login, Password, Email) VALUES (?, ?, ?)", login, passwordHashed, email)
 	if err != nil {
 		return false, err
 	}
@@ -166,35 +199,27 @@ func LoginUser(login string, password string) (bool, error) {
 
 	return true, nil
 }
-
-func UserQuestions(login string) (types.RecoveryPasswordQuestions, error) {
+func UserEmail(login string) (types.RecoveryEmail, error) {
 	db, err := OpenDatabaseConnection()
 	if err != nil {
-		return types.RecoveryPasswordQuestions{}, err
+		return types.RecoveryEmail{}, err
 	}
 	defer db.Close()
 
 	userExists, err := CheckUserExists(login)
 	if !userExists {
-		return types.RecoveryPasswordQuestions{}, err
+		return types.RecoveryEmail{}, err
 	}
 
-	result, err := db.Query("SELECT Login, FirstQuestion, SecondQuestion FROM Users WHERE Login = ?", login)
+	row := db.QueryRow("SELECT Login, Email FROM Users WHERE Login = ?", login)
+
+	recoveryEmail := types.RecoveryEmail{}
+	err = row.Scan(&recoveryEmail.Login, &recoveryEmail.Email)
 	if err != nil {
-		return types.RecoveryPasswordQuestions{}, err
-	}
-	defer result.Close()
-
-	recoveryPasswordQuestions := types.RecoveryPasswordQuestions{}
-
-	for result.Next() {
-		err := result.Scan(&recoveryPasswordQuestions.Login, &recoveryPasswordQuestions.FirstQuestion, &recoveryPasswordQuestions.SecondQuestion)
-		if err != nil {
-			return types.RecoveryPasswordQuestions{}, err
-		}
+		return types.RecoveryEmail{}, err
 	}
 
-	return recoveryPasswordQuestions, nil
+	return recoveryEmail, nil
 }
 
 func CheckUserExists(login string) (bool, error) {
@@ -212,6 +237,26 @@ func CheckUserExists(login string) (bool, error) {
 
 	if !result.Next() {
 		err = errors.New("Error: User not found!")
+		return false, err
+	}
+	return true, nil
+}
+
+func CheckEmailExists(email string) (bool, error) {
+	db, err := OpenDatabaseConnection()
+	if err != nil {
+		return false, err
+	}
+	defer db.Close()
+
+	result, err := db.Query("SELECT * FROM Users WHERE Email = ?", email)
+	if err != nil {
+		return false, err
+	}
+	defer result.Close()
+
+	if !result.Next() {
+		err = errors.New("Error: Email not found!")
 		return false, err
 	}
 	return true, nil
@@ -242,7 +287,7 @@ func initUsers(db *sql.DB) error {
 	}
 	for _, u := range users {
 		hashPassword, err := utils.HashPassword(u)
-		_, err = db.Query("INSERT INTO Users (Login, Password, FirstQuestion, FirstAnswer, SecondQuestion, SecondAnswer) VALUES (?, ?, ?, ?, ?, ?)", u, hashPassword, QUESTIONS[0], "a", QUESTIONS[1], "a")
+		_, err = db.Query("INSERT INTO Users (Login, Password) VALUES (?, ?)", u, hashPassword)
 		if err != nil {
 			return err
 		}
@@ -268,10 +313,7 @@ func InitDatabase() error {
 			ID int NOT NULL AUTO_INCREMENT, 
 			Login varchar(20), 
 			Password varchar(80), 
-			FirstQuestion varchar(80), 
-			FirstAnswer varchar(80), 
-			SecondQuestion varchar(80), 
-			SecondAnswer varchar(80), 
+			Email varchar(80),
 			RecoveryToken varchar(200),
 			PRIMARY KEY (ID)
 		);`)

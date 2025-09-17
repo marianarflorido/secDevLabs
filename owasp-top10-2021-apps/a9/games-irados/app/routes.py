@@ -28,6 +28,11 @@ bootstrap = Bootstrap(app)
 
 app.config.from_pyfile('config.py')
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
 
 def generate_csrf_token():
     '''
@@ -49,7 +54,12 @@ def csrf_protect():
         token_csrf = session.get('_csrf_token')
         form_token = request.form.get('_csrf_token')
         if not token_csrf or str(token_csrf) != str(form_token):
-            return "ERROR: Wrong value for csrf_token"
+            app.logger.warning(
+                f"{request.remote_addr} {request.method} "
+                f"Path={request.full_path} "
+                f"Action=csrf_failed"
+            )
+            return "Invalid CSRF token", 403
 
 def login_required(f):
     @wraps(f)
@@ -67,19 +77,41 @@ def root():
 @app.route('/logout', methods=['GET'])
 @login_required
 def logout():
+    app.logger.info(
+        f"{request.remote_addr} {request.method} "
+        f"User={session.get('username')} "
+        f"Path={request.full_path} "
+        f"Action=logout"
+    )
     session.clear()
     return redirect('/login')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username').encode('utf-8')
+        username = request.form.get('username', '')
         psw = Password(request.form.get('password').encode('utf-8'))
         user_password, success = database.get_user_password(username)
         if not success or user_password == None or not psw.validate_password(str(user_password[0])):
+
+            app.logger.warning(
+                f"{request.remote_addr} {request.method} "
+                f"User={username} "
+                f"Path={request.full_path} "
+                f"Action=login_failed"
+            )
             flash("Usuario ou senha incorretos", "danger")
+
             return render_template('login.html')
+        
         session['username'] = username
+
+        app.logger.info(
+            f"{request.remote_addr} {request.method} "
+            f"User={username} "
+            f"Path={request.full_path} "
+            f"Action=login_success"
+        )
         return redirect('/home')
     else:
         return render_template('login.html')
@@ -87,7 +119,7 @@ def login():
 @app.route('/register', methods=['GET', 'POST'])
 def newuser():
     if request.method == 'POST':
-        username = request.form.get('username').encode('utf-8')
+        username = request.form.get('username', '')
         psw1 = request.form.get('password1').encode('utf-8')
         psw2 = request.form.get('password2').encode('utf-8')
 
@@ -96,9 +128,23 @@ def newuser():
             hashed_psw = psw.get_hashed_password()
             message, success = database.insert_user(username, hashed_psw)
             if success == 1:
+                app.logger.info(
+                    f"{request.remote_addr} {request.method} "
+                    f"User={username} "
+                    f"Path={request.full_path} "
+                    f"Action=user_created"
+                )
                 flash("Novo usuario adicionado!", "primary")
                 return redirect('/login')
             else:
+                
+                app.logger.info(
+                    f"{request.remote_addr} {request.method} "
+                    f"User={username} "
+                    f"Path={request.full_path} "
+                    f"Action=user_creation_failed"
+                )
+
                 flash(message, "danger")
                 return redirect('/register')
 
@@ -115,17 +161,41 @@ def home():
 @app.route('/coupon', methods=['GET', 'POST'])
 @login_required
 def cupom():
+    username = session.get('username')
     if request.method == 'POST':
+        
         coupon = request.form.get('coupon')
+
         rows, success = database.get_game_coupon(coupon, session.get('username'))
         if not success or rows == None or rows == 0:
+            app.logger.info(
+                f"{request.remote_addr} {request.method} "
+                f"User={username} "
+                f"Path={request.full_path} "
+                f"Action=coupon_invalid"
+            )
             flash("Cupom invalido", "danger")
             return render_template('coupon.html')
+        
         game, success = database.get_game(coupon, session.get('username'))
         if not success or game == None:
+            app.logger.info(
+                f"{request.remote_addr} {request.method} "
+                f"User={username} "
+                f"Path={request.full_path} "
+                f"Action=coupon_invalid"
+            )
             flash("Cupom invalido", "danger")
             return render_template('coupon.html')
+        
+        app.logger.info(
+                f"{request.remote_addr} {request.method} "
+                f"User= {username} "
+                f"Path={request.full_path} "
+                f"Action=coupon_valid"
+            )
         flash("Voce ganhou {}".format(game[0]), "primary")
+
         return render_template('coupon.html')
     else:
         return render_template('coupon.html')

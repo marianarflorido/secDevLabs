@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import MySQLdb
-
+import html
 
 class DataBase:
     def __init__(self, host, user, password, database):
@@ -82,16 +82,17 @@ class DataBase:
         return gossips, 1
 
     def search_gossips(self, search_str):
+        
         try:
             self.c.execute(
-                'SELECT id, text, author, title, subtitle, date FROM gossips WHERE title  LIKE %s', ['%'+ search_str + '%'])
+                'SELECT id, text, author, title, subtitle, date FROM gossips WHERE title LIKE %s', ['%'+ search_str + '%'])
             gossips = self.c.fetchall()
         except (AttributeError, MySQLdb.OperationalError):
             self.connect()
             self.c.execute(
-                'SELECT id, text, author, title, subtitle, date FROM gossips WHERE title  LIKE %s', ['%'+ search_str + '%'])
+                'SELECT id, text, author, title, subtitle, date FROM gossips WHERE title LIKE %s', ['%'+ search_str + '%'])
+            
             gossips = self.c.fetchall()
-        except MySQLdb.Error as e:
             try:
                 message = 'MySQL Error [%d]: %s' % (e.args[0], e.args[1])
                 return message, 0

@@ -8,10 +8,10 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	db "github.com/globocom/secDevLabs/owasp-top10-2021-apps/a2/snake-pro/app/db/mongo"
-	"github.com/globocom/secDevLabs/owasp-top10-2021-apps/a2/snake-pro/app/pass"
 	"github.com/globocom/secDevLabs/owasp-top10-2021-apps/a2/snake-pro/app/types"
 	"github.com/google/uuid"
 	"github.com/labstack/echo"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // HealthCheck is the heath check function.
@@ -86,8 +86,8 @@ func Login(c echo.Context) error {
 		return c.JSON(http.StatusForbidden, map[string]string{"result": "error", "details": "Error login."})
 	}
 
-	validPass := pass.CheckPass(userDataResult.Password, loginAttempt.Password)
-	if !validPass {
+	err = bcrypt.CompareHashAndPassword([]byte(userDataResult.Password), []byte(loginAttempt.Password))
+	if err != nil {
 		// wrong password
 		return c.JSON(http.StatusForbidden, map[string]string{"result": "error", "details": "Error login."})
 	}
@@ -112,6 +112,6 @@ func Login(c echo.Context) error {
 	}
 	c.Response().Header().Set("Content-type", "text/html")
 	messageLogon := fmt.Sprintf("Hello, %s! Welcome to SnakePro", userDataResult.Username)
-	// err = c.Redirect(http.StatusFound, "http://www.localhost:10003/game/ranking")
+	// err = c.Redirect(http.StatusFound, "http://www.localhost:443/game/ranking")
 	return c.String(http.StatusOK, messageLogon)
 }

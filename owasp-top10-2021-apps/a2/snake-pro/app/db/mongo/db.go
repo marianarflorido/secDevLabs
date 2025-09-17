@@ -6,6 +6,7 @@ import (
 
 	"github.com/globocom/secDevLabs/owasp-top10-2021-apps/a2/snake-pro/app/config"
 	"github.com/globocom/secDevLabs/owasp-top10-2021-apps/a2/snake-pro/app/types"
+	"golang.org/x/crypto/bcrypt"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -184,9 +185,14 @@ func RegisterUser(userData types.UserData) error {
 		return err
 	}
 
+	hashPassword, err := bcrypt.GenerateFromPassword([]byte(userData.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
 	newUserData := bson.M{
 		"username": userData.Username,
-		"password": userData.Password,
+		"password": hashPassword,
 		"userID":   userData.UserID,
 	}
 	err = session.Insert(newUserData, UserCollection)

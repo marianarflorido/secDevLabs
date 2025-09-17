@@ -54,8 +54,10 @@ app.get('/healthcheck', (req, res) => {
 })
 
 app.post('/game', verifyJWT, async (req, res) => {
-    const user = req.body.user
+ 
+    const user = req.user.username
     const result = req.body.result
+    
     let statistics = await db.getStatisticsFromUser(user)
     if (statistics === null){
         return res.sendStatus(400)
@@ -119,7 +121,8 @@ app.post('/create', async (req, res) => {
 });
 
 app.get('/statistics/data', verifyJWT, async (req, res) => {
-    const user = req.query.user
+    
+    const user = req.user.username; 
 
     let statistics = await db.getStatisticsFromUser(user)
     if (statistics === undefined){
@@ -158,6 +161,7 @@ app.post('/login', async (req, res) => {
             .status(400)
             .json({msg:"User doesn't exist or wrong password"})
     }
+    
     const bufferSalt = new Buffer(salt)
     const hashedPassword = crypto.hash(password, bufferSalt)
     const ok = await db.checkPassword(username, hashedPassword)
@@ -188,6 +192,8 @@ function verifyJWT(req, res, next){
             return res
                 .sendFile(path.join(__dirname+'/public/views/error.html'))
         }
+    
+        req.user = decoded;
         next();
     });
 }

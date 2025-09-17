@@ -1,11 +1,16 @@
 # coding: utf-8
 
 from flask import Flask, request, make_response, render_template, redirect, flash
-import uuid
-import pickle
-import base64
+import jwt
+import os
+from datetime import datetime, timedelta, timezone
+
 app = Flask(__name__)
 
+
+admin = os.getenv("USERNAME")
+admin_pass = os.getenv("PASSWORD")
+secret = os.getenv("SECRET")
 
 @app.route("/")
 def ola():
@@ -17,32 +22,41 @@ def login():
         username = request.values.get('username')
         password = request.values.get('password')
     
-        if username == "admin" and password == "admin":
-            token = str(uuid.uuid4().hex)
-            cookie = { "username":username, "admin":True, "sessionId":token }
-            pickle_resultado = pickle.dumps(cookie)
-            encodedSessionCookie = base64.b64encode(pickle_resultado)
+        if username == admin and password == admin_pass:
+
+            payload = {
+                "admin" : True,
+                "exp": datetime.now(timezone.utc) + timedelta(minutes=10)
+            }
+            token = jwt.encode(payload, secret, algorithm="HS256")
+            
             resp = make_response(redirect("/user"))
-            resp.set_cookie("sessionId", encodedSessionCookie)
+            resp.set_cookie("sessionId", token, httponly=True, secure=False)
+            
             return resp
 
         else:
             return redirect("/admin")
+        
 
     else:
         return render_template('admin.html')
 
 @app.route("/user", methods=['GET'])
 def userInfo():
-    cookie = request.cookies.get("sessionId")
-    if cookie == None:
+    token = request.cookies.get("sessionId")
+    if not token:
         return "Não Autorizado!"
-    cookie = pickle.loads(base64.b64decode(cookie))
-
-    return render_template('user.html')
     
+    try: 
+        data = jwt.decode(token, secret, algorithms=["HS256"])
+        return render_template('user.html', user=data)
 
-
-
+    except jwt.ExpiredSignatureError:
+        return "Sessão expirada, faça login novamente."
+    
+    except jwt.InvalidTokenError:
+        return "Token inválido!"
+    
 if __name__ == '__main__':
     app.run(debug=True,host='0.0.0.0')

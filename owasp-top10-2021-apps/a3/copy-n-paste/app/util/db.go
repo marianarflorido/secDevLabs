@@ -15,7 +15,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-//OpenDBConnection establish a connection with the MySQL DB.
+// OpenDBConnection establish a connection with the MySQL DB.
 func OpenDBConnection() (*sql.DB, error) {
 	connstr := fmt.Sprintf(
 		"%s:%s@tcp(%s:%s)/%s",
@@ -34,7 +34,7 @@ func OpenDBConnection() (*sql.DB, error) {
 	return dbConn, nil
 }
 
-//AuthenticateUser is the function that checks if the given user and password are valid or not
+// AuthenticateUser is the function that checks if the given user and password are valid or not
 func AuthenticateUser(user string, pass string) (bool, error) {
 	if user == "" || pass == "" {
 		return false, errors.New("All fields are required")
@@ -46,8 +46,7 @@ func AuthenticateUser(user string, pass string) (bool, error) {
 	}
 	defer dbConn.Close()
 
-	query := fmt.Sprint("select * from Users where username = '" + user + "'")
-	rows, err := dbConn.Query(query)
+	rows, err := dbConn.Query("select * from Users where username = ?", user)
 	if err != nil {
 		return false, err
 	}
@@ -65,7 +64,7 @@ func AuthenticateUser(user string, pass string) (bool, error) {
 	return false, nil
 }
 
-//NewUser registers a new user to the db
+// NewUser registers a new user to the db
 func NewUser(user string, pass string, passcheck string) (bool, error) {
 	if user == "" || pass == "" || passcheck == "" {
 		return false, errors.New("All fields are required")
@@ -88,8 +87,7 @@ func NewUser(user string, pass string, passcheck string) (bool, error) {
 	}
 	defer dbConn.Close()
 
-	query := fmt.Sprint("insert into Users (username, password) values ('" + user + "', '" + passHash + "')")
-	rows, err := dbConn.Query(query)
+	rows, err := dbConn.Query("insert into Users (username, password) values (?, ?)", user, passHash)
 	if err != nil {
 		return false, err
 	}
@@ -99,7 +97,7 @@ func NewUser(user string, pass string, passcheck string) (bool, error) {
 	return true, nil //user created
 }
 
-//CheckIfUserExists checks if there is an user with the given username on db
+// CheckIfUserExists checks if there is an user with the given username on db
 func CheckIfUserExists(username string) (bool, error) {
 
 	dbConn, err := OpenDBConnection()
@@ -108,8 +106,7 @@ func CheckIfUserExists(username string) (bool, error) {
 	}
 	defer dbConn.Close()
 
-	query := fmt.Sprint("select username from Users where username = '" + username + "'")
-	rows, err := dbConn.Query(query)
+	rows, err := dbConn.Query("select username from Users where username = ?", username)
 	if err != nil {
 		return false, err
 	}

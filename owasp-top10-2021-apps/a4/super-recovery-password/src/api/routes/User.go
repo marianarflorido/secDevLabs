@@ -15,7 +15,7 @@ func UserInfo(c echo.Context) (err error) {
 		return
 	}
 	u.Login = strings.ToLower(u.Login)
-	userQuestions, err := database.UserQuestions(u.Login)
+	userEmail, err := database.UserEmail(u.Login)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, echo.Map{
 			"message": "invalid login",
@@ -23,8 +23,7 @@ func UserInfo(c echo.Context) (err error) {
 	}
 
 	return c.JSON(http.StatusOK, echo.Map{
-		"login":          userQuestions.Login,
-		"firstQuestion":  userQuestions.FirstQuestion,
-		"secondQuestion": userQuestions.SecondQuestion,
+		"login":          userEmail.Login,
+		"email":  userEmail.Email,
 	})
 }

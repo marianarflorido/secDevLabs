@@ -5,6 +5,15 @@ import { UserUtil } from 'src/app/user/user-utils';
 import { LiveService } from '../lives.service';
 import { Message } from '../message';
 
+function escapeHTML(input: string): string {
+    return input
+        .replace(/&/g, "&amp;")    // Replace ampersand
+        .replace(/</g, "&lt;")     // Replace less than
+        .replace(/>/g, "&gt;")     // Replace greater than
+        .replace(/"/g, "&quot;")   // Replace double quote
+        .replace(/'/g, "&apos;");  // Replace single quote
+  }
+
 @Component({
   selector: 'app-play',
   templateUrl: './play.component.html',
@@ -120,7 +129,8 @@ export class PlayComponent implements OnInit {
 
     newMessageBox.appendChild(labelUserMessage);
 
-    contentMessage.innerHTML = message.content;
+    //contentMessage.innerHTML = message.content;
+    contentMessage.textContent = message.content;
     newMessageBox.appendChild(contentMessage);
 
     return newMessageBox;
